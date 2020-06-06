@@ -58,10 +58,6 @@
   color: #8e929c;
 }
 
-::-ms-input-placeholder {
-  color: #8e929c;
-}
-
 ::placeholder {
   color: #8e929c;
 }
@@ -189,6 +185,19 @@ tr .form-item,
   color: #82828c;
 }
 
+/* Add some spacing so that the focus ring and suffix don't overlap. */
+
+@media screen and (min-width: 601px) {
+  .form-item__suffix {
+    margin-left: 0.5rem; /* LTR */
+  }
+
+  [dir="rtl"] .form-item__suffix {
+    margin-right: 0.5rem;
+    margin-left: 0;
+  }
+}
+
 /**
  * Form actions.
  */
@@ -279,4 +288,27 @@ tr .form-item,
   div.form-item div.password-suggestions {
     float: none;
   }
+}
+
+/**
+ * Prevent regression due to explicit line-heights applied to these elements in
+ * normalize.css 7.0.0.
+ */
+
+button {
+  line-height: 1.125rem;
+}
+
+input,
+optgroup {
+  line-height: 1.5rem;
+}
+
+/**
+ * Prevent regression due to -webkit-appearance being set to button in
+ * normalize.css 4.1.0.
+ */
+
+::-webkit-file-upload-button {
+  -webkit-appearance: push-button;
 }
