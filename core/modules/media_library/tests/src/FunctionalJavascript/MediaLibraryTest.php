@@ -39,6 +39,11 @@ class MediaLibraryTest extends WebDriverTestBase {
   /**
    * {@inheritdoc}
    */
+  protected $defaultTheme = 'classy';
+
+  /**
+   * {@inheritdoc}
+   */
   protected function setUp() {
     parent::setUp();
     $this->lockHttpClientToFixtures();
@@ -1997,7 +2002,7 @@ class MediaLibraryTest extends WebDriverTestBase {
 
     $this->drupalGet('/admin/structure/types/manage/article/fields/add-field');
     $page->selectFieldOption('new_storage_type', 'field_ui:entity_reference:media');
-    $this->assertTrue($assert_session->waitForField('label'));
+    $this->assertNotNull($assert_session->waitForField('label'));
     $page->fillField('label', 'Shatner');
     $this->waitForText('field_shatner');
     $page->pressButton('Save and continue');
@@ -2289,8 +2294,15 @@ class MediaLibraryTest extends WebDriverTestBase {
     $assert_session->pageTextMatches('/The media items? ha(s|ve) been created but ha(s|ve) not yet been saved. Fill in any required fields and save to add (it|them) to the media library./');
     $assert_session->elementAttributeContains('css', $selector, 'aria-label', 'Added media items');
 
-    $this->assertElementExistsAfterWait('css', '[data-drupal-selector="edit-media-' . $index . '-fields"]');
+    $fields = $this->assertElementExistsAfterWait('css', '[data-drupal-selector="edit-media-' . $index . '-fields"]');
     $assert_session->elementNotExists('css', '.js-media-library-menu');
+
+    // Assert extraneous components were removed in
+    // FileUploadForm::hideExtraSourceFieldComponents().
+    $assert_session->elementNotExists('css', '[data-drupal-selector$="preview"]', $fields);
+    $assert_session->buttonNotExists('Remove', $fields);
+    $assert_session->elementNotExists('css', '[data-drupal-selector$="filename"]', $fields);
+    $assert_session->elementNotExists('css', '.file-size', $fields);
   }
 
   /**
