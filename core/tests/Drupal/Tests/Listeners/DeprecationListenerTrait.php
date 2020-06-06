@@ -114,6 +114,7 @@ trait DeprecationListenerTrait {
       '%The "[^"]+" class extends "Symfony\\\\Component\\\\EventDispatcher\\\\Event" that is deprecated since Symfony 4\.3, use "Symfony\\\\Contracts\\\\EventDispatcher\\\\Event" instead\.$%',
       '%The "Symfony\\\\Component\\\\Validator\\\\Context\\\\ExecutionContextInterface::.*\(\)" method is considered internal Used by the validator engine. Should not be called by user\s\*\s*code\. It may change without further notice\. You should not extend it from "[^"]+".%',
       '%The ".*" service relies on the deprecated "Symfony\\\\Component\\\\Debug\\\\BufferingLogger" class\. It should either be deprecated or its implementation upgraded\.%',
+      '%The "PHPUnit\\\\Framework\\\\TestCase::addWarning\(\)" method is considered internal%',
     ];
     return (bool) preg_filter($dynamic_skipped_deprecations, '$0', $message);
   }
@@ -146,13 +147,6 @@ trait DeprecationListenerTrait {
       // This deprecation comes from behat/mink-browserkit-driver when updating
       // symfony/browser-kit to 4.3+.
       'The "Symfony\Component\BrowserKit\Response::getStatus()" method is deprecated since Symfony 4.3, use getStatusCode() instead.',
-      // The following deprecations are introduced in by the new
-      // DebugClassLoader in Symfony 4 we cannot immediately fix them without
-      // breaking backwards compatibility.
-      // @see https://www.drupal.org/project/drupal/issues/3030494
-      // @see https://www.drupal.org/project/drupal/issues/3030474
-      'The "Drupal\Core\Template\Loader\StringLoader" class implements "Twig\Loader\ExistsLoaderInterface" that is deprecated since 1.12 (to be removed in 3.0).',
-      'The "Drupal\Core\Template\Loader\StringLoader" class implements "Twig\Loader\SourceContextLoaderInterface" that is deprecated since 1.27 (to be removed in 3.0).',
       // The following Symfony deprecations are introduced in the Symfony 4
       // development cycle. They will need to be resolved prior to Symfony 5
       // compatibility.

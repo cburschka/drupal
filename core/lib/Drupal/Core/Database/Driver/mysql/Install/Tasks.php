@@ -3,8 +3,8 @@
 namespace Drupal\Core\Database\Driver\mysql\Install;
 
 use Drupal\Core\Database\ConnectionNotDefinedException;
-use Drupal\Core\Database\Install\Tasks as InstallTasks;
 use Drupal\Core\Database\Database;
+use Drupal\Core\Database\Install\Tasks as InstallTasks;
 use Drupal\Core\Database\Driver\mysql\Connection;
 use Drupal\Core\Database\DatabaseNotFoundException;
 
@@ -15,13 +15,19 @@ class Tasks extends InstallTasks {
 
   /**
    * Minimum required MySQL version.
+   *
+   * 5.7.8 is the minimum version that supports the JSON datatype.
+   * @see https://dev.mysql.com/doc/refman/5.7/en/json.html
    */
-  const MYSQL_MINIMUM_VERSION = '5.7.0';
+  const MYSQL_MINIMUM_VERSION = '5.7.8';
 
   /**
    * Minimum required MariaDB version.
+   *
+   * 10.2.7 is the minimum version that supports the JSON datatype (alias).
+   * @see https://mariadb.com/kb/en/json-data-type/
    */
-  const MARIADB_MINIMUM_VERSION = '10.2.0';
+  const MARIADB_MINIMUM_VERSION = '10.2.7';
 
   /**
    * Minimum required MySQLnd version.
@@ -55,6 +61,9 @@ class Tasks extends InstallTasks {
    */
   public function name() {
     try {
+      if (!$this->isConnectionActive() || !$this->getConnection() instanceof Connection) {
+        throw new ConnectionNotDefinedException('The database connection is not active or not a MySql connection');
+      }
       if ($this->getConnection()->isMariaDb()) {
         return $this->t('MariaDB');
       }

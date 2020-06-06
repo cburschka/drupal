@@ -2,7 +2,6 @@
 
 namespace Drupal\Tests\Core\Database\Driver\mysql\install;
 
-use Drupal\Core\Database\ConnectionNotDefinedException;
 use Drupal\Core\Database\Driver\mysql\Connection;
 use Drupal\Core\Database\Driver\mysql\Install\Tasks;
 use Drupal\Tests\UnitTestCase;
@@ -30,9 +29,9 @@ class TasksTest extends UnitTestCase {
   }
 
   /**
-   * Creates a Connection object for testing.
+   * Creates a Tasks object for testing.
    *
-   * @return \Drupal\Core\Database\Driver\mysql\Connection
+   * @return \Drupal\Core\Database\Driver\mysql\Install\Tasks
    */
   private function createTasks(): Tasks {
     /** @var \Drupal\Core\Database\Driver\mysql\Connection $connection */
@@ -46,8 +45,35 @@ class TasksTest extends UnitTestCase {
         $this->connection = $connection;
       }
 
+      protected function isConnectionActive() {
+        return TRUE;
+      }
+
       protected function getConnection() {
         return $this->connection;
+      }
+
+      protected function t($string, array $args = [], array $options = []) {
+        return $string;
+      }
+
+    };
+  }
+
+  /**
+   * Creates a Tasks object for testing, without connection.
+   *
+   * @return \Drupal\Core\Database\Driver\mysql\Install\Tasks
+   */
+  private function createTasksNoConnection(): Tasks {
+    return new class() extends Tasks {
+
+      protected function isConnectionActive() {
+        return FALSE;
+      }
+
+      protected function getConnection() {
+        return NULL;
       }
 
       protected function t($string, array $args = [], array $options = []) {
@@ -101,15 +127,8 @@ class TasksTest extends UnitTestCase {
    * @covers ::name
    */
   public function testNameWithNoConnection() {
-    $this->connection
-      ->isMariaDb()
-      ->shouldBeCalledOnce()
-      ->willThrow(ConnectionNotDefinedException::class);
-    $tasks = $this->createTasks();
-
-    $name = $tasks->name();
-
-    $this->assertSame('MySQL, MariaDB, Percona Server, or equivalent', $name);
+    $tasks = $this->createTasksNoConnection();
+    $this->assertSame('MySQL, MariaDB, Percona Server, or equivalent', $tasks->name());
   }
 
 }

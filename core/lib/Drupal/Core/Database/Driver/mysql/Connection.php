@@ -577,7 +577,7 @@ class Connection extends DatabaseConnection {
     // MariaDB may prefix its version string with '5.5.5-', which should be
     // ignored.
     // @see https://github.com/MariaDB/server/blob/f6633bf058802ad7da8196d01fd19d75c53f7274/include/mysql_com.h#L42.
-    $regex = '/^(?:(?:5\.5\.5-)|)(\d+\.\d+\.\d+.*-mariadb.*)/i';
+    $regex = '/^(?:5\.5\.5-)?(\d+\.\d+\.\d+.*-mariadb.*)/i';
 
     preg_match($regex, $this->getServerVersion(), $matches);
     return (empty($matches[1])) ? NULL : $matches[1];

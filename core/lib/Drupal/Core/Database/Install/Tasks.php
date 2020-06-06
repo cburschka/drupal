@@ -311,6 +311,17 @@ abstract class Tasks {
   }
 
   /**
+   * Determines if there is an active connection.
+   *
+   * @return bool
+   *   TRUE if there is at least one database connection established, FALSE
+   *   otherwise.
+   */
+  protected function isConnectionActive() {
+    return Database::isActiveConnection();
+  }
+
+  /**
    * Returns the database connection.
    *
    * @return \Drupal\Core\Database\Connection
