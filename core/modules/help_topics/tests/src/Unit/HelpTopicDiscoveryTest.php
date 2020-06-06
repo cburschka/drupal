@@ -34,7 +34,7 @@ class HelpTopicDiscoveryTest extends UnitTestCase {
     $discovery = new HelpTopicDiscovery(['foo' => vfsStream::url('root/modules/foo/help_topics')]);
 
     $this->expectException(DiscoveryException::class);
-    $this->expectExceptionMessage("vfs://root/modules/foo/help_topics/test.topic.html.twig should begin with 'foo.'");
+    $this->expectExceptionMessage("vfs://root/modules/foo/help_topics/test.topic.html.twig file name should begin with 'foo'");
     $discovery->getDefinitions();
   }
 
@@ -167,6 +167,29 @@ EOF;
       ],
     ]);
     $discovery = new HelpTopicDiscovery(['help_topics' => vfsStream::url('root/modules/help_topics/help_topics')]);
+    $this->assertArrayHasKey('core.topic', $discovery->getDefinitions());
+  }
+
+  /**
+   * @covers ::findAll
+   */
+  public function testHelpTopicsInCore() {
+    vfsStream::setup('root');
+    $topic_content = <<<EOF
+---
+label: Test
+---
+<h2>Test</h2>
+EOF;
+
+    vfsStream::create([
+      'core' => [
+        'help_topics' => [
+          'core.topic.html.twig' => $topic_content,
+        ],
+      ],
+    ]);
+    $discovery = new HelpTopicDiscovery(['core' => vfsStream::url('root/core/help_topics')]);
     $this->assertArrayHasKey('core.topic', $discovery->getDefinitions());
   }
 

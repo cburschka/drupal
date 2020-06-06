@@ -552,6 +552,7 @@ function template_preprocess_datetime_form(&$variables) {
   $element = $variables['element'];
 
   $variables['attributes'] = [];
+
   if (isset($element['#id'])) {
     $variables['attributes']['id'] = $element['#id'];
   }
@@ -560,6 +561,27 @@ function template_preprocess_datetime_form(&$variables) {
   }
 
   $variables['content'] = $element;
+
+  // Add instructional text describing the required date and time formats.
+  // This will be hidden on JavaScript-enabled browsers that have a native
+  // datepicker.
+  if (!empty($element['#date_date_format'])) {
+    $placeholder_date = 'YYYY-MM-DD';
+    $variables['attributes']['data-drupal-field-elements'] = 'date' . ($element['#date_time_element'] === 'none' ? '' : '-time');
+    $date_format = is_array($element['#date_date_format']) ? $element['#date_date_format'][0] : date($element['#date_date_format']);
+    $variables['content']['date']['#attributes']['placeholder'] = $placeholder_date;
+    $help_date = t('Enter the date using the format @placeholder_date (e.g., @date_format).', ['@date_format' => $date_format, '@placeholder_date' => $placeholder_date]);
+    $variables['content']['date']['#attributes']['data-help'] = $help_date;
+
+    // Include time formatting instructions when a time input is present.
+    if (!empty($element['#date_time_format'])) {
+      $placeholder_time = 'hh:mm:ss';
+      $time_format = is_array($element['#date_time_format']) ? $element['#date_time_format'][0] : date($element['#date_time_format']);
+      $variables['content']['time']['#attributes']['placeholder'] = $placeholder_time;
+      $help_time = t('Enter the time using the format @placeholder_time (e.g., @time_format).', ['@time_format' => $time_format, '@placeholder_time' => $placeholder_time]);
+      $variables['content']['time']['#attributes']['data-help'] = $help_time;
+    }
+  }
 }
 
 /**
@@ -593,6 +615,7 @@ function template_preprocess_datetime_wrapper(&$variables) {
     if (!empty($element['#id'])) {
       $description_attributes['id'] = $element['#id'] . '--description';
     }
+    $description_attributes['data-drupal-field-elements'] = 'description';
     $variables['description'] = $element['#description'];
     $variables['description_attributes'] = new Attribute($description_attributes);
   }
@@ -844,6 +867,8 @@ function template_preprocess_image(&$variables) {
  *     - sort: A default sort order for this column ("asc" or "desc"). Only
  *       one column should be given a default sort order because table sorting
  *       only applies to one column at a time.
+ *     - initial_click_sort: Set the initial sort of the column when clicked.
+ *       Defaults to "asc".
  *     - class: An array of values for the 'class' attribute. In particular,
  *       the least important columns that can be hidden on narrow and medium
  *       width screens should have a 'priority-low' class, referenced with the
@@ -997,7 +1022,8 @@ function template_preprocess_table(&$variables) {
 
         TableSort::header($cell_content, $cell, $variables['header'], $ts);
 
-        // TableSort::header() removes the 'sort' and 'field' keys.
+        // TableSort::header() removes the 'sort', 'initial_click_sort' and
+        // 'field' keys.
         $cell_attributes = new Attribute($cell);
       }
       $variables['header'][$col_key] = [];

@@ -18,7 +18,7 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
  * @see \Drupal\help_topics\HelpTopicTwigLoader
  *
  * @internal
- *   Help Topic is currently experimental and should only be leveraged by
+ *   Help Topics is currently experimental and should only be leveraged by
  *   experimental modules and development releases of contributed modules.
  *   See https://www.drupal.org/core/experimental for more information.
  */
@@ -99,16 +99,16 @@ class HelpTopicDiscovery implements DiscoveryInterface {
         $plugin_id = substr(basename($file), 0, -10);
         // The plugin ID begins with provider.
         list($file_name_provider,) = explode('.', $plugin_id, 2);
-        // Only the Help Topics module can provider help for other extensions.
-        // @todo https://www.drupal.org/project/drupal/issues/3025577 Remove
+        // Only the Help Topics module can provide help for other extensions.
+        // @todo https://www.drupal.org/project/drupal/issues/3072312 Remove
         //   help_topics special case once Help Topics is stable and core
         //   modules can provide their own help topics.
         if ($provider !== 'help_topics' && $provider !== $file_name_provider) {
-          throw new DiscoveryException("$file should begin with '$provider.'");
+          throw new DiscoveryException("$file file name should begin with '$provider'");
         }
         $data = [
           // The plugin ID is derived from the filename. The extension
-          // '.html.twig' is removed
+          // '.html.twig' is removed.
           'id' => $plugin_id,
           'provider' => $file_name_provider,
           'class' => HelpTopicTwig::class,
@@ -131,15 +131,18 @@ class HelpTopicDiscovery implements DiscoveryInterface {
               }
               $data[$key] = $value;
               break;
+
             case 'top_level':
               if (!is_bool($value)) {
                 throw new DiscoveryException("$file contains invalid value for 'top_level' key, the value must be a Boolean");
               }
               $data[$key] = $value;
               break;
+
             case 'label':
               $data[$key] = new TranslatableMarkup($value);
               break;
+
             default:
               throw new DiscoveryException("$file contains invalid key='$key'");
           }

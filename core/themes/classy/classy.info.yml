@@ -4,7 +4,6 @@ base theme: stable
 description: 'A base theme with sensible default CSS classes added. Learn how to use Classy as a base theme in the <a href="https://www.drupal.org/docs/8/theming">Drupal 8 Theming Guide</a>.'
 package: Core
 version: VERSION
-core: 8.x
 hidden: true
 
 libraries:
@@ -25,6 +24,10 @@ libraries-extend:
     - classy/progress
   media/media_embed_ckeditor_theme:
     - classy/media_embed_ckeditor_theme
+  media_library/view:
+    - classy/media_library
+  media_library/widget:
+    - classy/media_library
 
 ckeditor_stylesheets:
   - css/components/media-embed-error.css

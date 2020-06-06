@@ -15,12 +15,6 @@ use Drupal\workspaces\Entity\Workspace;
 function workspaces_requirements($phase) {
   $requirements = [];
   if ($phase === 'install') {
-    if (\Drupal::moduleHandler()->moduleExists('content_moderation')) {
-      $requirements['content_moderation_incompatibility'] = [
-        'severity' => REQUIREMENT_ERROR,
-        'description' => t('Workspaces can not be installed when Content Moderation is also installed.'),
-      ];
-    }
     if (\Drupal::moduleHandler()->moduleExists('workspace')) {
       $requirements['workspace_incompatibility'] = [
         'severity' => REQUIREMENT_ERROR,
@@ -163,4 +157,20 @@ function workspaces_update_8801() {
   }
 
   return t("The 'workspace' revision metadata field has been installed.");
+}
+
+/**
+ * Add the 'parent' field to the 'workspace' entity type.
+ */
+function workspaces_update_8802() {
+  $entity_definition_update_manager = \Drupal::entityDefinitionUpdateManager();
+
+  // Install the new 'parent' field.
+  $storage_definition = BaseFieldDefinition::create('entity_reference')
+    ->setLabel(t('Parent'))
+    ->setDescription(t('The parent workspace.'))
+    ->setSetting('target_type', 'workspace')
+    ->setReadOnly(TRUE);
+
+  $entity_definition_update_manager->installFieldStorageDefinition('parent', 'workspace', 'workspaces', $storage_definition);
 }

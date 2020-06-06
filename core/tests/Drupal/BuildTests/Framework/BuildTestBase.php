@@ -113,21 +113,22 @@ abstract class BuildTestBase extends TestCase {
   private $hostPort;
 
   /**
+   * A list of ports used by the test.
+   *
+   * Prevent the same process finding the same port by storing a list of ports
+   * already discovered. This also stores locks so they are not released until
+   * the test class is torn down.
+   *
+   * @var \Symfony\Component\Lock\LockInterface[]
+   */
+  private $portLocks = [];
+
+  /**
    * The Mink session manager.
    *
    * @var \Behat\Mink\Mink
    */
   private $mink;
-
-  /**
-   * @var \Symfony\Component\Lock\Factory
-   */
-  private $lockFactory;
-
-  /**
-   * @var \Symfony\Component\Lock\Lock[]
-   */
-  private $locks;
 
   /**
    * The most recent command process.
@@ -169,6 +170,9 @@ abstract class BuildTestBase extends TestCase {
     parent::tearDown();
 
     $this->stopServer();
+    foreach ($this->portLocks as $lock) {
+      $lock->release();
+    }
     $ws = $this->getWorkspaceDirectory();
     $fs = new SymfonyFilesystem();
     if ($this->destroyBuild && $fs->exists($ws)) {
@@ -378,9 +382,11 @@ abstract class BuildTestBase extends TestCase {
       $this->stopServer();
     }
     // If there's not a server at this point, make one.
-    $this->serverProcess = $this->instantiateServer($this->getPortNumber(), $working_dir);
-    if ($this->serverProcess) {
-      $this->serverDocroot = $working_dir;
+    if (!$this->serverProcess || $this->serverProcess->isTerminated()) {
+      $this->serverProcess = $this->instantiateServer($this->getPortNumber(), $working_dir);
+      if ($this->serverProcess) {
+        $this->serverDocroot = $working_dir;
+      }
     }
   }
 
@@ -388,6 +394,10 @@ abstract class BuildTestBase extends TestCase {
    * Do the work of making a server process.
    *
    * Test authors should call visit() or assertVisit() instead.
+   *
+   * When initializing the server, if '.ht.router.php' exists in the root, it is
+   * leveraged. If testing with a version of Drupal before 8.5.x., this file
+   * does not exist.
    *
    * @param int $port
    *   The port number for the server.
@@ -411,6 +421,9 @@ abstract class BuildTestBase extends TestCase {
       '-t',
       $working_path,
     ];
+    if (file_exists($working_path . DIRECTORY_SEPARATOR . '.ht.router.php')) {
+      $server[] = $working_path . DIRECTORY_SEPARATOR . '.ht.router.php';
+    }
     $ps = new Process($server, $working_path);
     $ps->setIdleTimeout(30)
       ->setTimeout(30)
@@ -423,7 +436,7 @@ abstract class BuildTestBase extends TestCase {
       }
       usleep(1000);
     }
-    throw new \RuntimeException('Unable to start the web server.');
+    throw new \RuntimeException(sprintf("Unable to start the web server.\nERROR OUTPUT:\n%s", $ps->getErrorOutput()));
   }
 
   /**
@@ -449,11 +462,29 @@ abstract class BuildTestBase extends TestCase {
    *   Thrown when there are no available ports within the range.
    */
   protected function findAvailablePort() {
+    $store = new FlockStore(DrupalFilesystem::getOsTemporaryDirectory());
+    $lock_factory = new Factory($store);
+
     $counter = 100;
     while ($counter--) {
-      $port = random_int(1024, 65535);
-      if ($this->checkPortIsAvailable($port)) {
-        return $port;
+      // Limit to 9999 as higher ports cause random fails on DrupalCI.
+      $port = random_int(1024, 9999);
+
+      if (isset($this->portLocks[$port])) {
+        continue;
+      }
+
+      // Take a lock so that no other process can use the same port number even
+      // if the server is yet to start.
+      $lock = $lock_factory->createLock('drupal-build-test-port-' . $port);
+      if ($lock->acquire()) {
+        if ($this->checkPortIsAvailable($port)) {
+          $this->portLocks[$port] = $lock;
+          return $port;
+        }
+        else {
+          $lock->release();
+        }
       }
     }
     throw new \RuntimeException('Unable to find a port available to run the web server.');
@@ -468,18 +499,15 @@ abstract class BuildTestBase extends TestCase {
    * @return bool
    */
   protected function checkPortIsAvailable($port) {
-    if ($this->lockAcquired($port)) {
-      $fp = @fsockopen(self::$hostName, $port, $errno, $errstr, 1);
-      // If fsockopen() fails to connect, probably nothing is listening.
-      // It could be a firewall but that's impossible to detect, so as a
-      // best guess let's return it as available.
-      if ($fp === FALSE) {
-        return TRUE;
-      }
-      else {
-        $this->lockRelease($port);
-        fclose($fp);
-      }
+    $fp = @fsockopen(self::$hostName, $port, $errno, $errstr, 1);
+    // If fsockopen() fails to connect, probably nothing is listening.
+    // It could be a firewall but that's impossible to detect, so as a
+    // best guess let's return it as available.
+    if ($fp === FALSE) {
+      return TRUE;
+    }
+    else {
+      fclose($fp);
     }
     return FALSE;
   }
@@ -496,54 +524,6 @@ abstract class BuildTestBase extends TestCase {
       $this->hostPort = $this->findAvailablePort();
     }
     return $this->hostPort;
-  }
-
-  /**
-   * Get a lock.
-   *
-   * @param $name
-   *   The name of the lock.
-   *
-   * @return bool
-   *   TRUE if the lock has been successfully acquired.
-   */
-  protected function lockAcquired($name) {
-    if (!$this->lockFactory) {
-      $store = new FlockStore(DrupalFilesystem::getOsTemporaryDirectory());
-      $this->lockFactory = new Factory($store);
-    }
-    $name = $this->getLockName($name);
-    if (!isset($this->locks[$name])) {
-      $this->locks[$name] = $this->lockFactory->createLock($name);
-    }
-    $lock = $this->locks[$name];
-    return $lock->isAcquired() || $lock->acquire();
-  }
-
-  /**
-   * Releases a lock.
-   *
-   * @param $name
-   *   The name of the lock.
-   */
-  protected function lockRelease($name) {
-    $name = $this->getLockName($name);
-    if (isset($this->lock[$name])) {
-      $this->locks[$name]->release();
-    }
-  }
-
-  /**
-   * Gets the lock name.
-   *
-   * @param $name
-   *   The lock name.
-   *
-   * @return string
-   *   Prefix lock name.
-   */
-  protected function getLockName($name) {
-    return 'drupal-build-test-' . $name;
   }
 
   /**
@@ -569,13 +549,12 @@ abstract class BuildTestBase extends TestCase {
     if ($iterator === NULL) {
       $finder = new Finder();
       $finder->files()
+        ->ignoreUnreadableDirs()
         ->in($this->getDrupalRoot())
-        ->exclude([
-          'sites/default/files',
-          'sites/simpletest',
-          'vendor',
-        ])
-        ->notPath('/sites\/default\/settings\..*php/')
+        ->notPath('#^sites/default/files#')
+        ->notPath('#^sites/simpletest#')
+        ->notPath('#^vendor#')
+        ->notPath('#^sites/default/settings\..*php#')
         ->ignoreDotFiles(FALSE)
         ->ignoreVCS(FALSE);
       $iterator = $finder->getIterator();
