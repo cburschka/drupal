@@ -7,10 +7,10 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
 use Drupal\Core\DependencyInjection\DeprecatedServicePropertyTrait;
 use Drupal\Core\Entity\ContentEntityTypeInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
-use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\EntityPublishedInterface;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Entity\Exception\FieldStorageDefinitionUpdateForbiddenException;
 use Drupal\Core\Entity\Schema\DynamicallyFieldableEntityStorageSchemaInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -2526,6 +2526,7 @@ class SqlContentEntityStorageSchema implements DynamicallyFieldableEntityStorage
    *
    * @see hook_schema()
    * @see https://www.drupal.org/node/146843
+   * @see \Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema
    */
   public static function castValue(array $info, $value) {
     // Preserve legal NULL values.

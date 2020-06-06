@@ -3,10 +3,10 @@
 namespace Drupal\simpletest\Tests;
 
 use Drupal\Core\Database\Database;
-use Drupal\field\Entity\FieldConfig;
-use Drupal\simpletest\KernelTestBase;
-use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\simpletest\KernelTestBase;
 
 /**
  * Tests KernelTestBase functionality.
@@ -127,7 +127,7 @@ EOS;
     $this->assertTrue(in_array($module, $list), "{$module}_hook_info() in \Drupal::moduleHandler()->getImplementations() found.");
 
     $this->assertTrue(Database::getConnection()->schema()->tableExists($table), "'$table' database table found.");
-    $schema = drupal_get_module_schema($module, $table);
+    $schema = \Drupal::service('database.schema.data')->getSpecification($module, $table);
     $this->assertTrue($schema, "'$table' table schema found.");
   }
 
@@ -158,8 +158,10 @@ EOS;
     $this->installSchema($module, $table);
     $this->assertTrue(Database::getConnection()->schema()->tableExists($table), "'$table' database table found.");
 
+    /** @var \Drupal\Core\Schema\SchemaDataInterface $schema_data */
+    $schema_data = \Drupal::service('database.schema.data');
     // Verify that the schema is known to Schema API.
-    $schema = drupal_get_module_schema($module, $table);
+    $schema = $schema_data->getSpecification($module, $table);
     $this->assertTrue($schema, "'$table' table schema found.");
 
     // Verify that a unknown table from an enabled module throws an error.
@@ -172,7 +174,7 @@ EOS;
       $this->pass('Exception for non-retrievable schema found.');
     }
     $this->assertFalse(Database::getConnection()->schema()->tableExists($table), "'$table' database table not found.");
-    $schema = drupal_get_module_schema($module, $table);
+    $schema = $schema_data->getSpecification($module, $table);
     $this->assertFalse($schema, "'$table' table schema not found.");
 
     // Verify that a table from a unknown module cannot be installed.
@@ -186,14 +188,14 @@ EOS;
       $this->pass('Exception for non-retrievable schema found.');
     }
     $this->assertFalse(Database::getConnection()->schema()->tableExists($table), "'$table' database table not found.");
-    $schema = drupal_get_module_schema($module, $table);
+    $schema = $schema_data->getSpecification($module, $table);
     $this->assertTrue($schema, "'$table' table schema found.");
 
     // Verify that the same table can be installed after enabling the module.
     $this->enableModules([$module]);
     $this->installSchema($module, $table);
     $this->assertTrue(Database::getConnection()->schema()->tableExists($table), "'$table' database table found.");
-    $schema = drupal_get_module_schema($module, $table);
+    $schema = \Drupal::service('database.schema.data')->getSpecification($module, $table);
     $this->assertTrue($schema, "'$table' table schema found.");
   }
 

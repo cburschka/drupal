@@ -8,6 +8,7 @@ use Drupal\Core\DrupalKernelInterface;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Serialization\Yaml;
+use Drupal\Core\Schema\SchemaDataInterface;
 
 /**
  * Default implementation of the module installer.
@@ -44,6 +45,13 @@ class ModuleInstaller implements ModuleInstallerInterface {
   protected $root;
 
   /**
+   * The schema service.
+   *
+   * @var \Drupal\Core\Schema\SchemaDataInterface
+   */
+  protected $schemaData;
+
+  /**
    * The uninstall validators.
    *
    * @var \Drupal\Core\Extension\ModuleUninstallValidatorInterface[]
@@ -59,14 +67,21 @@ class ModuleInstaller implements ModuleInstallerInterface {
    *   The module handler.
    * @param \Drupal\Core\DrupalKernelInterface $kernel
    *   The drupal kernel.
+   * @param \Drupal\Core\Schema\SchemaDataInterface|null $schema_data
+   *   (Optional) The schema service.
    *
    * @see \Drupal\Core\DrupalKernel
    * @see \Drupal\Core\CoreServiceProvider
    */
-  public function __construct($root, ModuleHandlerInterface $module_handler, DrupalKernelInterface $kernel) {
+  public function __construct($root, ModuleHandlerInterface $module_handler, DrupalKernelInterface $kernel, SchemaDataInterface $schema_data = NULL) {
     $this->root = $root;
     $this->moduleHandler = $module_handler;
     $this->kernel = $kernel;
+    if (!$schema_data) {
+      @trigger_error('Calling ModuleInstaller::__construct() without the $schema_data argument is deprecated in drupal:8.8.0. The $schema_data argument will be required in drupal:9.0.0.. See https://www.drupal.org/project/drupal/issues/2124069.', E_USER_DEPRECATED);
+      $schema_data = \Drupal::service('database.schema.data');
+    }
+    $this->schemaData = $schema_data;
   }
 
   /**
@@ -233,7 +248,7 @@ class ModuleInstaller implements ModuleInstallerInterface {
         // Set the schema version to the number of the last update provided by
         // the module, or the minimum core schema version.
         $version = \Drupal::CORE_MINIMUM_SCHEMA_VERSION;
-        $versions = drupal_get_schema_versions($module);
+        $versions = $this->schemaData->getVersions($module);
         if ($versions) {
           $version = max(max($versions), $version);
         }
@@ -568,6 +583,7 @@ class ModuleInstaller implements ModuleInstallerInterface {
     // dependencies.
     $container = $this->kernel->getContainer();
     $this->moduleHandler = $container->get('module_handler');
+    $this->schemaData = $container->get('database.schema.data');
   }
 
   /**

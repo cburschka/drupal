@@ -26,38 +26,17 @@ const SCHEMA_UNINSTALLED = -1;
  * @return array|bool
  *   If the module has updates, an array of available updates sorted by
  *   version. Otherwise, FALSE.
+ *
+ * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0.
+ *   Use \Drupal\Core\Schema\SchemaDataInterface::getVersions() instead.
+ *
+ * @see https://www.drupal.org/node/2444417
  */
 function drupal_get_schema_versions($module) {
-  $updates = &drupal_static(__FUNCTION__, NULL);
-  if (!isset($updates[$module])) {
-    $updates = [];
-    foreach (\Drupal::moduleHandler()->getModuleList() as $loaded_module => $filename) {
-      $updates[$loaded_module] = [];
-    }
-
-    // Prepare regular expression to match all possible defined hook_update_N().
-    $regexp = '/^(?<module>.+)_update_(?<version>\d+)$/';
-    $functions = get_defined_functions();
-    // Narrow this down to functions ending with an integer, since all
-    // hook_update_N() functions end this way, and there are other
-    // possible functions which match '_update_'. We use preg_grep() here
-    // instead of foreaching through all defined functions, since the loop
-    // through all PHP functions can take significant page execution time
-    // and this function is called on every administrative page via
-    // system_requirements().
-    foreach (preg_grep('/_\d+$/', $functions['user']) as $function) {
-      // If this function is a module update function, add it to the list of
-      // module updates.
-      if (preg_match($regexp, $function, $matches)) {
-        $updates[$matches['module']][] = $matches['version'];
-      }
-    }
-    // Ensure that updates are applied in numerical order.
-    foreach ($updates as &$module_updates) {
-      sort($module_updates, SORT_NUMERIC);
-    }
-  }
-  return empty($updates[$module]) ? FALSE : $updates[$module];
+  @trigger_error('drupal_get_schema_versions() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use \Drupal\Core\Schema\SchemaDataInterface::getVersions() instead. See https://www.drupal.org/node/2444417', E_USER_DEPRECATED);
+  $versions = \Drupal::service('database.schema.data')->getVersions($module);
+  // Service returns an empty array instead of FALSE as before.
+  return $versions ?: FALSE;
 }
 
 /**
@@ -117,7 +96,7 @@ function drupal_set_installed_schema_version($module, $version) {
  *   The module for which the tables will be created.
  */
 function drupal_install_schema($module) {
-  $schema = drupal_get_module_schema($module);
+  $schema = \Drupal::service('database.schema.data')->getSpecification($module);
   _drupal_schema_initialize($schema, $module, FALSE);
 
   foreach ($schema as $name => $table) {
@@ -132,7 +111,7 @@ function drupal_install_schema($module) {
  *   The module for which the tables will be removed.
  */
 function drupal_uninstall_schema($module) {
-  $tables = drupal_get_module_schema($module);
+  $tables = \Drupal::service('database.schema.data')->getSpecification($module);
   _drupal_schema_initialize($tables, $module, FALSE);
   $schema = \Drupal::database()->schema();
   foreach ($tables as $table) {
@@ -154,22 +133,15 @@ function drupal_uninstall_schema($module) {
  * @param string $table
  *   The name of the table. If not given, the module's complete schema
  *   is returned.
+ *
+ * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
+ *   \Drupal\Core\Schema\SchemaDataInterface::getSpecification() instead.
+ *
+ * @see https://www.drupal.org/node/2444417
  */
 function drupal_get_module_schema($module, $table = NULL) {
-  // Load the .install file to get hook_schema.
-  module_load_install($module);
-  $schema = \Drupal::moduleHandler()->invoke($module, 'schema');
-
-  if (isset($table)) {
-    if (isset($schema[$table])) {
-      return $schema[$table];
-    }
-    return [];
-  }
-  elseif (!empty($schema)) {
-    return $schema;
-  }
-  return [];
+  @trigger_error('drupal_get_module_schema() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use \Drupal\Core\Schema\SchemaDataInterface::getSpecification() instead. See https://www.drupal.org/node/2444417', E_USER_DEPRECATED);
+  return \Drupal::service('database.schema.data')->getSpecification($module, $table);
 }
 
 /**
@@ -218,13 +190,13 @@ function _drupal_schema_initialize(&$schema, $module, $remove_descriptions = TRU
  * @return mixed
  *   The converted value.
  *
- * @deprecated in drupal:8.8.0 and will be removed from drupal:9.0.0. Use
+ * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
  *   \Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema::castValue() instead.
  *
- * @see https://www.drupal.org/node/3051983
+ * @see https://www.drupal.org/node/2444417
  */
 function drupal_schema_get_field_value(array $info, $value) {
-  @trigger_error('drupal_schema_get_field_value() is deprecated in drupal:8.8.0. It will be removed from drupal:9.0.0. Use \Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema::castValue($info, $value) instead. See https://www.drupal.org/node/3051983', E_USER_DEPRECATED);
+  @trigger_error('drupal_schema_get_field_value() is deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use \Drupal\Core\Entity\Sql\SqlContentEntityStorageSchema::castValue($info, $value) instead. See https://www.drupal.org/node/2444417', E_USER_DEPRECATED);
   return SqlContentEntityStorageSchema::castValue($info, $value);
 }
 

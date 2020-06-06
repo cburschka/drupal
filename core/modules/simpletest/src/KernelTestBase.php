@@ -463,7 +463,7 @@ EOD;
 
     $tables = (array) $tables;
     foreach ($tables as $table) {
-      $schema = drupal_get_module_schema($module, $table);
+      $schema = \Drupal::service('database.schema.data')->getSpecification($module, $table);
       if (empty($schema)) {
         // BC layer to avoid some contrib tests to fail.
         // @todo Remove the BC layer before 8.1.x release.

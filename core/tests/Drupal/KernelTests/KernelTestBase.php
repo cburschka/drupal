@@ -703,7 +703,7 @@ abstract class KernelTestBase extends TestCase implements ServiceProviderInterfa
     }
     $tables = (array) $tables;
     foreach ($tables as $table) {
-      $schema = drupal_get_module_schema($module, $table);
+      $schema = $this->container->get('database.schema.data')->getSpecification($module, $table);
       if (empty($schema)) {
         // BC layer to avoid some contrib tests to fail.
         if ($module == 'system') {

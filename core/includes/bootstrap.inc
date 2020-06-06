@@ -992,6 +992,12 @@ function &drupal_static($name, $default_value = NULL, $reset = FALSE) {
  *   unit tests with a clean environment.
  */
 function drupal_static_reset($name = NULL) {
+  switch ($name) {
+    case 'drupal_get_schema_versions':
+      @trigger_error("Using drupal_static_reset() with 'drupal_get_schema_versions' as parameter is deprecated in drupal:8.8.0 and will be removed before drupal:9.0.0. Use \Drupal\Core\Schema\SchemaDataInterface::resetCache() instead. See https://www.drupal.org/node/2444417.", E_USER_DEPRECATED);
+      \Drupal::service('database.schema.data')->resetCache();
+      return;
+  }
   drupal_static($name, NULL, TRUE);
 }
 

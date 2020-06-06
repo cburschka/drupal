@@ -777,9 +777,10 @@ function system_requirements($phase) {
 
     // Check installed modules.
     $has_pending_updates = FALSE;
+    $schema_data = \Drupal::service('database.schema.data');
     foreach (\Drupal::moduleHandler()->getModuleList() as $module => $filename) {
-      $updates = drupal_get_schema_versions($module);
-      if ($updates !== FALSE) {
+      $updates = $schema_data->getVersions($module);
+      if ($updates) {
         $default = drupal_get_installed_schema_version($module);
         if (max($updates) > $default) {
           $has_pending_updates = TRUE;
@@ -799,7 +800,7 @@ function system_requirements($phase) {
     if ($has_pending_updates) {
       $requirements['update']['severity'] = REQUIREMENT_ERROR;
       $requirements['update']['value'] = t('Out of date');
-      $requirements['update']['description'] = t('Some modules have database schema updates to install. You should run the <a href=":update">database update script</a> immediately.', [':update' => Url::fromRoute('system.db_update')->toString()]);
+      $requirements['update']['description'] = t('Some modules have database schema_data updates to install. You should run the <a href=":update">database update script</a> immediately.', [':update' => Url::fromRoute('system.db_update')->toString()]);
     }
 
     $requirements['entity_update'] = [

@@ -433,6 +433,9 @@ services:
   logger.log_message_parser:
     class: Drupal\Core\Logger\LogMessageParser
 
+  database.schema.data:
+    class: Drupal\Core\Schema\SchemaData
+    arguments: ['@module_handler', '@cache.default', '@keyvalue', '@database', '@cache_tags.invalidator']
   serialization.json:
     class: Drupal\Component\Serialization\Json
   serialization.phpserialize:
@@ -515,7 +518,7 @@ services:
     class: Drupal\Core\Extension\ModuleInstaller
     tags:
       - { name: service_collector, tag: 'module_install.uninstall_validator', call: addUninstallValidator }
-    arguments: ['@app.root', '@module_handler', '@kernel']
+    arguments: ['@app.root', '@module_handler', '@kernel', '@database.schema.data']
     lazy: true
   extension.list.module:
     class: Drupal\Core\Extension\ModuleExtensionList

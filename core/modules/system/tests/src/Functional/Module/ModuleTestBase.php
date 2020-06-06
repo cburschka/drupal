@@ -7,6 +7,7 @@ use Drupal\Core\Config\InstallStorage;
 use Drupal\Core\Database\Database;
 use Drupal\Core\Config\FileStorage;
 use Drupal\Core\Logger\RfcLogLevel;
+use Drupal\Core\Schema\SchemaDataInterface;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -56,7 +57,9 @@ abstract class ModuleTestBase extends BrowserTestBase {
    *   The name of the module.
    */
   public function assertModuleTablesExist($module) {
-    $tables = array_keys(drupal_get_module_schema($module));
+    $schema_data = \Drupal::service('database.schema.data');
+    assert($schema_data instanceof SchemaDataInterface);
+    $tables = array_keys($schema_data->getSpecification($module));
     $tables_exist = TRUE;
     $schema = Database::getConnection()->schema();
     foreach ($tables as $table) {
@@ -74,7 +77,9 @@ abstract class ModuleTestBase extends BrowserTestBase {
    *   The name of the module.
    */
   public function assertModuleTablesDoNotExist($module) {
-    $tables = array_keys(drupal_get_module_schema($module));
+    $schema_data = \Drupal::service('database.schema.data');
+    assert($schema_data instanceof SchemaDataInterface);
+    $tables = array_keys($schema_data->getSpecification($module));
     $tables_exist = FALSE;
     $schema = Database::getConnection()->schema();
     foreach ($tables as $table) {

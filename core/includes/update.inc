@@ -306,6 +306,7 @@ function update_get_update_list() {
   $ret = ['system' => []];
 
   $modules = drupal_get_installed_schema_version(NULL, FALSE, TRUE);
+  $schema_data = \Drupal::service('database.schema.data');
   foreach ($modules as $module => $schema_version) {
     // Skip uninstalled and incompatible modules.
     if ($schema_version == SCHEMA_UNINSTALLED || update_check_incompatibility($module)) {
@@ -318,8 +319,8 @@ function update_get_update_list() {
       continue;
     }
     // Otherwise, get the list of updates defined by this module.
-    $updates = drupal_get_schema_versions($module);
-    if ($updates !== FALSE) {
+    $updates = $schema_data->getVersions($module);
+    if ($updates) {
       // \Drupal::moduleHandler()->invoke() returns NULL for non-existing hooks,
       // so if no updates are removed, it will == 0.
       $last_removed = \Drupal::moduleHandler()->invoke($module, 'update_last_removed');
@@ -453,10 +454,11 @@ function update_get_update_function_list($starting_updates) {
   // Go through each module and find all updates that we need (including the
   // first update that was requested and any updates that run after it).
   $update_functions = [];
+  $schema_data = \Drupal::service('database.schema.data');
   foreach ($starting_updates as $module => $version) {
     $update_functions[$module] = [];
-    $updates = drupal_get_schema_versions($module);
-    if ($updates !== FALSE) {
+    $updates = $schema_data->getVersions($module);
+    if ($updates) {
       $max_version = max($updates);
       if ($version <= $max_version) {
         foreach ($updates as $update) {

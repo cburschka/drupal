@@ -252,7 +252,7 @@ function node_update_8301() {
  * Fix realm column description on the node_access table.
  */
 function node_update_8400() {
-  $schema = drupal_get_module_schema('node', 'node_access');
+  $schema = \Drupal::service('database.schema.data')->getSpecification('node', 'node_access');
   $schema['fields']['realm']['description'] = 'The realm in which the user must possess the grant ID. Modules can define one or more realms by implementing hook_node_grants().';
   Database::getConnection()->schema()->changeField('node_access', 'realm', 'realm', $schema['fields']['realm']);
 }
