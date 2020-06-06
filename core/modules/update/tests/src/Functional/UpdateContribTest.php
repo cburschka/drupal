@@ -5,6 +5,7 @@ namespace Drupal\Tests\update\Functional;
 use Drupal\Core\Link;
 use Drupal\Core\Url;
 use Drupal\Core\Utility\ProjectInfo;
+use Drupal\update\UpdateManagerInterface;
 
 /**
  * Tests how the Update Manager module handles contributed modules and themes in
@@ -13,6 +14,16 @@ use Drupal\Core\Utility\ProjectInfo;
  * @group update
  */
 class UpdateContribTest extends UpdateTestBase {
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $updateTableLocator = 'table.update:nth-of-type(2)';
+
+  /**
+   * {@inheritdoc}
+   */
+  protected $updateProject = 'aaa_update_test';
 
   /**
    * Modules to enable.
@@ -227,6 +238,98 @@ class UpdateContribTest extends UpdateTestBase {
   }
 
   /**
+   * Tests the Update Manager module when one normal update is available.
+   */
+  public function testNormalUpdateAvailable() {
+    $assert_session = $this->assertSession();
+    // Ensure that the update check requires a token.
+    $this->drupalGet('admin/reports/updates/check');
+    $assert_session->statusCodeEquals(403);
+
+    $system_info = [
+      'aaa_update_test' => [
+        'project' => 'aaa_update_test',
+        'version' => '8.x-1.0',
+        'hidden' => FALSE,
+      ],
+    ];
+    $this->config('update_test.settings')->set('system_info', $system_info)->save();
+
+    foreach (['1.1', '1.2', '2.0'] as $version) {
+      foreach (['-beta1', '-alpha1', ''] as $extra_version) {
+        $full_version = "8.x-$version$extra_version";
+        $this->refreshUpdateStatus([
+          'drupal' => '0.0',
+          'aaa_update_test' => str_replace('.', '_', $version) . $extra_version,
+        ]);
+        $this->standardTests();
+        $this->drupalGet('admin/reports/updates');
+        $this->clickLink('Check manually');
+        $this->checkForMetaRefresh();
+        $assert_session->pageTextNotContains('Security update required!');
+        // Set a CSS selector in order for assertions to target the 'Modules'
+        // table and not Drupal core updates.
+        $this->updateTableLocator = 'table.update:nth-of-type(2)';
+        switch ($version) {
+          case '1.1':
+            // Both stable and unstable releases are available.
+            // A stable release is the latest.
+            if ($extra_version == '') {
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Up to date');
+              $assert_session->elementTextContains('css', $this->updateTableLocator, 'Update available');
+              $this->assertVersionUpdateLinks('Recommended version', $full_version);
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Latest version:');
+              $assert_session->elementContains('css', $this->updateTableLocator, 'warning.svg');
+            }
+            // Only unstable releases are available.
+            // An unstable release is the latest.
+            else {
+              $assert_session->elementTextContains('css', $this->updateTableLocator, 'Up to date');
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Update available');
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Recommended version:');
+              $this->assertVersionUpdateLinks('Latest version', $full_version);
+              $assert_session->elementContains('css', $this->updateTableLocator, 'check.svg');
+            }
+            break;
+
+          case '1.2':
+            // Both stable and unstable releases are available.
+            // A stable release is the latest.
+            if ($extra_version == '') {
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Up to date');
+              $assert_session->elementTextContains('css', $this->updateTableLocator, 'Update available');
+              $this->assertVersionUpdateLinks('Recommended version:', $full_version);
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Latest version:');
+              $assert_session->elementContains('css', $this->updateTableLocator, 'warning.svg');
+            }
+            // Both stable and unstable releases are available.
+            // An unstable release is the latest.
+            else {
+              $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Up to date');
+              $assert_session->elementTextContains('css', $this->updateTableLocator, 'Update available');
+              $this->assertVersionUpdateLinks('Recommended version:', '8.x-1.1');
+              $this->assertVersionUpdateLinks('Latest version:', $full_version);
+              $assert_session->elementTextContains('css', $this->updateTableLocator, 'Latest version:');
+              $assert_session->elementContains('css', $this->updateTableLocator, 'warning.svg');
+            }
+            break;
+
+          case '2.0':
+            // When next major release (either stable or unstable) is available
+            // and the current major is still supported, the next major will be
+            // listed as "Also available".
+            $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Up to date');
+            $assert_session->elementTextContains('css', $this->updateTableLocator, 'Update available');
+            $this->assertVersionUpdateLinks('Recommended version', '8.x-1.2');
+            $this->assertVersionUpdateLinks('Also available', $full_version);
+            $assert_session->elementTextNotContains('css', $this->updateTableLocator, 'Latest version:');
+            $assert_session->elementContains('css', $this->updateTableLocator, 'warning.svg');
+        }
+      }
+    }
+  }
+
+  /**
    * Tests that disabled themes are only shown when desired.
    *
    * @todo https://www.drupal.org/node/2338175 extensions can not be hidden and
@@ -410,7 +513,7 @@ class UpdateContribTest extends UpdateTestBase {
     $update_test_config->set('system_info', $system_info)->save();
     $update_status = [
       'aaa_update_test' => [
-        'status' => UPDATE_NOT_SECURE,
+        'status' => UpdateManagerInterface::NOT_SECURE,
       ],
     ];
     $update_test_config->set('update_status', $update_status)->save();
@@ -442,6 +545,39 @@ class UpdateContribTest extends UpdateTestBase {
     $update_test_config->set('update_status', [])->save();
     $this->drupalGet('admin/modules/update');
     $this->assertNoText(t('Security update'));
+  }
+
+  /**
+   * Tests that core compatibility messages are displayed.
+   */
+  public function testCoreCompatibilityMessage() {
+    $system_info = [
+      '#all' => [
+        'version' => '8.0.0',
+      ],
+      'aaa_update_test' => [
+        'project' => 'aaa_update_test',
+        'version' => '8.x-1.0',
+        'hidden' => FALSE,
+      ],
+    ];
+    $this->config('update_test.settings')->set('system_info', $system_info)->save();
+
+    // Confirm that messages are displayed for recommended and latest updates.
+    $this->refreshUpdateStatus(['drupal' => '1.1', 'aaa_update_test' => '8.x-1.2']);
+    $this->assertCoreCompatibilityMessage('8.x-1.2', '8.0.0 to 8.1.1', 'Recommended version:');
+    $this->assertCoreCompatibilityMessage('8.x-1.3-beta1', '8.0.0, 8.1.1', 'Latest version:');
+
+    // Change the available core releases and confirm that the messages change.
+    $this->refreshUpdateStatus(['drupal' => '1.1-alpha1', 'aaa_update_test' => '8.x-1.2']);
+    $this->assertCoreCompatibilityMessage('8.x-1.2', '8.0.0 to 8.1.0', 'Recommended version:');
+    $this->assertCoreCompatibilityMessage('8.x-1.3-beta1', '8.0.0', 'Latest version:');
+
+    // Confirm that messages are displayed for security and 'Also available'
+    // updates.
+    $this->refreshUpdateStatus(['drupal' => '1.1', 'aaa_update_test' => 'sec.8.x-1.2_8.x-2.2']);
+    $this->assertCoreCompatibilityMessage('8.x-1.2', '8.1.0 to 8.1.1', 'Security update:');
+    $this->assertCoreCompatibilityMessage('8.x-2.2', '8.1.1', 'Also available:');
   }
 
   /**
@@ -568,6 +704,24 @@ class UpdateContribTest extends UpdateTestBase {
       //   - 8.x-3.0-beta1 using fixture 'sec.8.x-1.2_8.x-2.2' to ensure that
       //     8.x-2.2 is the  only security update.
     ];
+  }
+
+  /**
+   * Asserts that a core compatibility message is correct for an update.
+   *
+   * @param string $version
+   *   The version of the update.
+   * @param string $expected_compatibility_range
+   *   The expected core compatibility range.
+   * @param string $expected_release_title
+   *   The expected release title.
+   */
+  protected function assertCoreCompatibilityMessage($version, $expected_compatibility_range, $expected_release_title) {
+    $link = $this->getSession()->getPage()->findLink($version);
+    $update_info_element = $link->getParent();
+    $this->assertContains("This module is compatible with Drupal core: $expected_compatibility_range", $update_info_element->getText());
+    $update_title_element = $update_info_element->getParent()->find('css', '.project-update__version-title');
+    $this->assertSame($expected_release_title, $update_title_element->getText());
   }
 
 }
