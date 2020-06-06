@@ -77,7 +77,12 @@ class InfoParserDynamic implements InfoParserInterface {
         throw new InfoParserException("Invalid 'core' value \"{$parsed_info['core']}\" in " . $filename);
       }
       if (isset($parsed_info['core_version_requirement'])) {
-        $supports_pre_core_version_requirement_version = static::isConstraintSatisfiedByPreviousVersion($parsed_info['core_version_requirement'], static::FIRST_CORE_VERSION_REQUIREMENT_SUPPORTED_VERSION);
+        try {
+          $supports_pre_core_version_requirement_version = static::isConstraintSatisfiedByPreviousVersion($parsed_info['core_version_requirement'], static::FIRST_CORE_VERSION_REQUIREMENT_SUPPORTED_VERSION);
+        }
+        catch (\UnexpectedValueException $e) {
+          throw new InfoParserException("The 'core_version_requirement' constraint ({$parsed_info['core_version_requirement']}) is not a valid value in $filename");
+        }
         // If the 'core_version_requirement' constraint does not satisfy any
         // Drupal 8 versions before 8.7.7 then 'core' cannot be set or it will
         // effectively support all versions of Drupal 8 because
@@ -101,24 +106,6 @@ class InfoParserDynamic implements InfoParserInterface {
       $parsed_info['core_incompatible'] = !Semver::satisfies(\Drupal::VERSION, $core_version_constraint);
       if (isset($parsed_info['version']) && $parsed_info['version'] === 'VERSION') {
         $parsed_info['version'] = \Drupal::VERSION;
-      }
-      // Special backwards compatible handling profiles and their 'dependencies'
-      // key.
-      if ($parsed_info['type'] === 'profile' && isset($parsed_info['dependencies']) && !array_key_exists('install', $parsed_info)) {
-        // Only trigger the deprecation message if we are actually using the
-        // profile with the missing 'install' key. This avoids triggering the
-        // deprecation when scanning all the available install profiles.
-        global $install_state;
-        if (isset($install_state['parameters']['profile'])) {
-          $pattern = '@' . preg_quote(DIRECTORY_SEPARATOR . $install_state['parameters']['profile'] . '.info.yml') . '$@';
-          if (preg_match($pattern, $filename)) {
-            @trigger_error("The install profile $filename only implements a 'dependencies' key. As of Drupal 8.6.0 profile's support a new 'install' key for modules that should be installed but not depended on. See https://www.drupal.org/node/2952947.", E_USER_DEPRECATED);
-          }
-        }
-        // Move dependencies to install so that if a profile has both
-        // dependencies and install then dependencies are real.
-        $parsed_info['install'] = $parsed_info['dependencies'];
-        $parsed_info['dependencies'] = [];
       }
     }
     return $parsed_info;

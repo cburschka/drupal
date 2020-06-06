@@ -24,7 +24,6 @@ use Drupal\Core\Security\PharExtensionInterceptor;
 use Drupal\Core\Security\RequestSanitizer;
 use Drupal\Core\Site\Settings;
 use Drupal\Core\Test\TestDatabase;
-use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\ClassLoader\ApcClassLoader;
 use Symfony\Component\ClassLoader\WinCacheClassLoader;
 use Symfony\Component\ClassLoader\XcacheClassLoader;
@@ -36,7 +35,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\TerminableInterface;
-use Symfony\Component\Routing\Route;
 use TYPO3\PharStreamWrapper\Manager as PharStreamWrapperManager;
 use TYPO3\PharStreamWrapper\Behavior as PharStreamWrapperBehavior;
 use TYPO3\PharStreamWrapper\PharStreamWrapper;
@@ -491,7 +489,7 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
         // Continue if the PharStreamWrapperManager is already initialized. For
         // example, this occurs during a module install.
         // @see \Drupal\Core\Extension\ModuleInstaller::install()
-      };
+      }
       stream_wrapper_unregister('phar');
       stream_wrapper_register('phar', PharStreamWrapper::class);
     }
@@ -732,25 +730,6 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
     }
 
     throw $e;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function prepareLegacyRequest(Request $request) {
-    $this->boot();
-    $this->preHandle($request);
-    // Setup services which are normally initialized from within stack
-    // middleware or during the request kernel event.
-    if (PHP_SAPI !== 'cli') {
-      $request->setSession($this->container->get('session'));
-    }
-    $request->attributes->set(RouteObjectInterface::ROUTE_OBJECT, new Route('<none>'));
-    $request->attributes->set(RouteObjectInterface::ROUTE_NAME, '<none>');
-    $this->container->get('request_stack')->push($request);
-    $this->container->get('router.request_context')->fromRequest($request);
-    @trigger_error(__NAMESPACE__ . '\DrupalKernel::prepareLegacyRequest is deprecated drupal:8.0.0 and is removed from drupal:9.0.0. Use DrupalKernel::boot() and DrupalKernel::preHandle() instead. See https://www.drupal.org/node/3070678', E_USER_DEPRECATED);
-    return $this;
   }
 
   /**
@@ -1602,18 +1581,9 @@ class DrupalKernel implements DrupalKernelInterface, TerminableInterface {
    */
   protected function getInstallProfile() {
     $config = $this->getConfigStorage()->read('core.extension');
-    if (isset($config['profile'])) {
-      $install_profile = $config['profile'];
-    }
-    // @todo https://www.drupal.org/node/2831065 remove the BC layer.
-    else {
-      // If system_update_8300() has not yet run fallback to using settings.
-      $settings = Settings::getAll();
-      $install_profile = isset($settings['install_profile']) ? $settings['install_profile'] : NULL;
-    }
 
     // Normalize an empty string to a NULL value.
-    return empty($install_profile) ? NULL : $install_profile;
+    return $config['profile'] ?? NULL;
   }
 
 }

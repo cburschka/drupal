@@ -47,16 +47,6 @@ trait FunctionalTestSetupTrait {
   protected $classLoader;
 
   /**
-   * The config directories used in this test.
-   *
-   * @deprecated in drupal:8.8.0 and is removed from drupal:9.0.0. Use
-   *   \Drupal\Core\Site\Settings::get('config_sync_directory') instead.
-   *
-   * @see https://www.drupal.org/node/3018145
-   */
-  protected $configDirectories = [];
-
-  /**
    * The flag to set 'apcu_ensure_unique_prefix' setting.
    *
    * Wide use of a unique prefix can lead to problems with memory, if tests are
@@ -301,7 +291,6 @@ trait FunctionalTestSetupTrait {
    */
   protected function initSettings() {
     Settings::initialize(DRUPAL_ROOT, $this->siteDirectory, $this->classLoader);
-    $this->configDirectories['sync'] = Settings::get('config_sync_directory');
 
     // After writing settings.php, the installer removes write permissions
     // from the site directory. To allow drupal_generate_test_ua() to write
@@ -416,6 +405,13 @@ trait FunctionalTestSetupTrait {
     // Use the install profile to determine the default theme if configured and
     // not already specified.
     $profile = $container->getParameter('install_profile');
+
+    $default_sync_path = drupal_get_path('profile', $profile) . '/config/sync';
+    $profile_config_storage = new FileStorage($default_sync_path, StorageInterface::DEFAULT_COLLECTION);
+    if (!isset($this->defaultTheme) && $profile_config_storage->exists('system.theme')) {
+      $this->defaultTheme = $profile_config_storage->read('system.theme')['default'];
+    }
+
     $default_install_path = drupal_get_path('profile', $profile) . '/' . InstallStorage::CONFIG_INSTALL_DIRECTORY;
     $profile_config_storage = new FileStorage($default_install_path, StorageInterface::DEFAULT_COLLECTION);
     if (!isset($this->defaultTheme) && $profile_config_storage->exists('system.theme')) {

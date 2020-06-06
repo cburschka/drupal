@@ -4,6 +4,7 @@ namespace Drupal\Tests\views\Kernel\Plugin;
 
 use Drupal\views\Plugin\views\join\FieldOrLanguageJoin;
 use Drupal\views\Views;
+use Drupal\views\ViewExecutable;
 
 /**
  * Tests the "field OR language" join plugin.
@@ -137,7 +138,7 @@ class FieldOrLanguageJoinTest extends RelationshipJoinTestBase {
     // condition.
     $configuration = [
       'table' => 'node__field_tags',
-      'left_table' => 'node',
+      'left_table' => 'views_test_data',
       'left_field' => 'nid',
       'field' => 'entity_id',
       'extra' => [
@@ -148,7 +149,7 @@ class FieldOrLanguageJoinTest extends RelationshipJoinTestBase {
       ],
     ];
     $join_info = $this->buildJoin($view, $configuration, 'node__field_tags');
-    $this->assertContains('AND (node__field_tags.langcode = .langcode)', $join_info['condition']);
+    $this->assertContains('AND (node__field_tags.langcode = views_test_data.langcode)', $join_info['condition']);
 
     array_unshift($configuration['extra'], [
       'field' => 'deleted',
@@ -156,7 +157,7 @@ class FieldOrLanguageJoinTest extends RelationshipJoinTestBase {
       'numeric' => TRUE,
     ]);
     $join_info = $this->buildJoin($view, $configuration, 'node__field_tags');
-    $this->assertContains('AND (node__field_tags.langcode = .langcode)', $join_info['condition']);
+    $this->assertContains('AND (node__field_tags.langcode = views_test_data.langcode)', $join_info['condition']);
 
     // Replace the language condition with a bundle condition.
     $configuration['extra'][1] = [
@@ -173,7 +174,7 @@ class FieldOrLanguageJoinTest extends RelationshipJoinTestBase {
       'field' => 'langcode',
     ];
     $join_info = $this->buildJoin($view, $configuration, 'node__field_tags');
-    $this->assertContains('AND (node__field_tags.bundle = :views_join_condition_1 OR node__field_tags.langcode = .langcode)', $join_info['condition']);
+    $this->assertContains('AND (node__field_tags.bundle = :views_join_condition_1 OR node__field_tags.langcode = views_test_data.langcode)', $join_info['condition']);
   }
 
   /**
@@ -191,7 +192,7 @@ class FieldOrLanguageJoinTest extends RelationshipJoinTestBase {
    *   \Drupal\Core\Database\Query\Select::$tables for more information on the
    *   structure of the array.
    */
-  protected function buildJoin($view, $configuration, $table_alias) {
+  protected function buildJoin(ViewExecutable $view, $configuration, $table_alias) {
     // Build the actual join values and read them back from the query object.
     $query = \Drupal::database()->select('node');
 
